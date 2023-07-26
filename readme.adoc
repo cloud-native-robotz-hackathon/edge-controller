@@ -1,5 +1,7 @@
 = Robot Hackathon Edge Controller
 
+## ARCHIVED VERSION : Check the aktive repos for the current version 
+
 The Edge Controller is a python Server publishing a REST-API to control the robot.
 
 Start it by executing:
