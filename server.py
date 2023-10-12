@@ -5,7 +5,10 @@ from flask import request
 import gopigo3
 import time
 import easygopigo3 as easy
-import atexit   
+import atexit
+
+import cv2
+import base64
 
 # Robot Hackathon Edge Controller
 
@@ -110,6 +113,17 @@ def power():
     current_voltage = str(easygpg.volt())
     stop_executing("power : " + current_voltage)
     return(current_voltage)
+
+@app.route('/camera', methods=['GET'])
+def camera():
+    cap = cv2.VideoCapture('/dev/video0', cv2.CAP_V4L)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    ret, frame = cap.read()
+    ret, buffer = cv2.imencode('.jpg', frame)
+    jpg_as_text = base64.b64encode(buffer)
+    cap.release()
+    return(jpg_as_text)   
 
 if __name__=='__main__':
 	app.run(host='0.0.0.0',debug=True)
