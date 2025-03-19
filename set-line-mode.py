@@ -31,9 +31,11 @@ def set_gpio_alt(pin, alt):
         mm.close()
 
 
+for GPIO_PIN in [7,8,23]:
+    set_gpio_alt(GPIO_PIN, 1)   
+    print(f"GPIO {GPIO_PIN:02d} set to Output")
+
 for GPIO_PIN in range(9, 12):
-    set_gpio_alt(GPIO_PIN, 4)  # ALT0 = PWM0
-    set_gpio_alt(GPIO_PIN, 4)  # ALT0 = PWM0
     set_gpio_alt(GPIO_PIN, 4)  # ALT0 = PWM0
     print(f"GPIO {GPIO_PIN:02d} set to ALT0 (PWM0)")
 
