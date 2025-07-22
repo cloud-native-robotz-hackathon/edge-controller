@@ -1,0 +1,12 @@
+[Unit]
+Description=Flask Edge Controller Server
+After=multi-user.target
+
+[Service]
+Type=idle
+Restart=always
+ExecStart=/usr/bin/python3 /opt/edge-controller/edge-controller.py
+
+[Install]
+WantedBy=multi-user.target
+

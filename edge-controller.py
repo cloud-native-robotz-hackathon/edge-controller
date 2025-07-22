@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, send_file, make_response
 import gopigo3
 import easygopigo3 as easy
 import atexit
@@ -8,6 +8,10 @@ import threading
 import time
 import sys
 import traceback
+import os
+import logging
+
+__version__ = "2.0.0"
 
 # --- Thread-Safe Camera Class (Unchanged) ---
 class ThreadedCamera:
@@ -40,8 +44,9 @@ class ThreadedCamera:
 
 # --- Flask Application and GoPiGo Setup ---
 app = Flask(__name__)
+app.logger.setLevel(level=os.environ.get('EDGE_CONTROLLER_LOGLEVEL', 'INFO').upper())
 
-print("--- Initializing GoPiGo Hardware ---")
+app.logger.info("--- Initializing GoPiGo Hardware ---")
 GPG = gopigo3.GoPiGo3()
 easygpg = easy.EasyGoPiGo3()
 distance_sensor = easygpg.init_distance_sensor()
@@ -49,7 +54,7 @@ servo = easygpg.init_servo()
 servo.reset_servo()
 easygpg.set_speed(300)
 easygpg.close_eyes()
-print("--- GoPiGo Initialized ---")
+app.logger.info("--- GoPiGo Initialized ---")
 
 # --- State Management Setup ---
 is_moving = False
@@ -58,11 +63,11 @@ camera_stream = None
 
 # --- Graceful Exit Handler ---
 def exit_handler():
-    print("Edge Controller is exiting")
+    app.logger.info("Edge Controller is exiting")
     if easygpg:
         easygpg.close_eyes()
     if camera_stream:
-        print("Releasing camera...")
+        app.logger.info("Releasing camera...")
         camera_stream.release()
 
 atexit.register(exit_handler)
@@ -72,6 +77,10 @@ atexit.register(exit_handler)
 @app.route('/', methods=['GET'])
 def index():
     return "Hackathon Robot ready"
+
+@app.route('/version', methods=['GET'])
+def version():
+    return __version__
 
 @app.route('/forward/<int:length_in_cm>', methods=['POST'])
 def forward(length_in_cm):
@@ -140,37 +149,59 @@ def distance():
 def power():
     return str(easygpg.volt())
 
-# --- Camera Endpoint (Updated with State Check) ---
-@app.route('/camera', methods=['GET'])
-def camera():
+def get_camera_jpg():
     global camera_stream
     global is_moving
 
     # First, check if the robot is moving.
     with motion_lock:
         if is_moving:
-            return "Robot is moving, image would be blurry.", 423 # 423 Locked
+            return None, "Robot is moving, image would be blurry.", 423 # 423 Locked
 
     # If not moving, proceed with lazy initialization of the camera.
     if camera_stream is None:
-        print("--- Initializing camera for the first time ---")
+        app.logger.info("--- Initializing camera for the first time ---")
         camera_stream = ThreadedCamera()
         time.sleep(2.0)
         if camera_stream.capture is None:
-            return "Error: Could not open camera.", 500
+            return None, "Error: Could not open camera.", 500
 
     # Read and return the frame as before.
     frame = camera_stream.read()
     if frame is None:
-        return "Error: Could not read frame from camera.", 500
+        return None, "Error: Could not read frame from camera.", 500
 
     ret, buffer = cv2.imencode('.jpg', frame)
     if not ret:
-        return "Error: Could not encode frame.", 500
+        return None, "Error: Could not encode frame.", 500
+
+    return buffer, "OK"
+
+# --- Camera Endpoint (Updated with State Check) ---
+@app.route('/camera', methods=['GET'])
+def camera():
+    
+    buffer, error_msg = get_camera_jpg()
+    if buffer is None:
+        return error_msg, 500
         
     jpg_as_text = base64.b64encode(buffer)
     return jpg_as_text
 
+@app.route('/camera.jpg', methods=['GET'])
+def camera_jpg():
+    
+    buffer, error_msg = get_camera_jpg()
+    if buffer is None:
+        return error_msg, 500
+
+    response = make_response(buffer.tobytes())
+    response.headers.set('Content-Type', 'image/jpeg')
+    return response
+
 # --- Main Execution Block ---
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True)
+    app.run(
+        host='0.0.0.0',
+        debug=(os.environ.get('EDGE_CONTROLLER_DEBUG', 'False') == 'True')
+    )

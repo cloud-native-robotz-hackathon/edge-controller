@@ -1,46 +1,45 @@
-= Robot Hackathon Edge Controller
+# Robot Hackathon Edge Controller
 
-A Python Flask REST API server for controlling GoPiGo3 robots with camera streaming and sensor monitoring.
+The Edge Controller is a python Server publishing a REST-API to control the robot.
 
-== Quick Start
+The Gopigo will turn on the left eye led to signal the running api.
 
-[source,bash]
-----
+## Quick Start
+
+```shell
 # Install dependencies
 pip3 install -r requirements.txt
 
 # Start the server
 python3 ./edgehub.py
-----
+```
 
 The GoPiGo will turn on the left eye LED when the API is running at `http://<robot-ip>:5000`
 
-== API Endpoints
+##  API Endpoints
 
-=== Status
+### Status
 * `GET /` - Health check
 * `GET /distance` - Distance sensor reading (mm)
 * `GET /power` - Battery voltage
-
-=== Movement
+###  Movement
 * `POST /forward/<cm>` - Move forward
 * `POST /backward/<cm>` - Move backward  
 * `POST /left/<degrees>` - Turn left
 * `POST /right/<degrees>` - Turn right
-
-=== Camera & Servo
-* `GET /camera` - Get base64-encoded JPEG image
 * `POST /servo/<degrees>` - Rotate servo
 
-[NOTE]
-====
+### Camera & Servo
+* `GET /camera` - Get base64-encoded JPEG image
+* `GET /camera.jpg` - Get JPEG image
+
+#### NOTE
 Camera returns HTTP 423 if robot is moving. Movement operations are thread-safe and execute one at a time.
-====
 
-== Examples
 
-[source,bash]
-----
+## Examples
+
+```shell
 # Move forward 20cm
 curl -X POST http://192.168.1.100:5000/forward/20
 
@@ -49,19 +48,24 @@ curl http://192.168.1.100:5000/camera > image.b64
 
 # Check distance
 curl http://192.168.1.100:5000/distance
-----
+```
 
-== Production Deployment
+## Production Deployment
 
-[source,bash]
-----
-sudo cp edgehub.service /etc/systemd/system/
-sudo systemctl enable edgehub.service
-sudo systemctl start edgehub.service
-----
+```shell
+cd /opt/
+git clone --depth 1 \
+    --single-branch \
+    --branch v2.0.0 \
+    https://github.com/cloud-native-robotz-hackathon/edge-controller.git
 
-== Troubleshooting
+cd edge-controller
+cp -v edge-controller.service /etc/systemd/system/
+systemctl enable --now edge-controller
+```
+
+## Troubleshooting
 
 * **Camera issues**: Check `/dev/video0` exists and permissions
 * **Robot not responding**: Verify GoPiGo3 libraries and battery level
-* **Service logs**: `sudo journalctl -u edgehub.service`
+* **Service logs**: `sudo journalctl -u edge-controller.service`
