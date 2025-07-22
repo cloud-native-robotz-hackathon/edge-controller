@@ -1,11 +1,67 @@
 = Robot Hackathon Edge Controller
 
-The Edge Controller is a python Server publishing a REST-API to control the robot.
+A Python Flask REST API server for controlling GoPiGo3 robots with camera streaming and sensor monitoring.
 
-Start it by executing:
+== Quick Start
 
-    python3 ./edgehub.py
+[source,bash]
+----
+# Install dependencies
+pip3 install -r requirements.txt
 
-The Gopigo will turn on the left eye led to signal the running api.
+# Start the server
+python3 ./edgehub.py
+----
 
-The REST-API is accessible unter http://<IP_of_the_gopigo>:5000
+The GoPiGo will turn on the left eye LED when the API is running at `http://<robot-ip>:5000`
+
+== API Endpoints
+
+=== Status
+* `GET /` - Health check
+* `GET /distance` - Distance sensor reading (mm)
+* `GET /power` - Battery voltage
+
+=== Movement
+* `POST /forward/<cm>` - Move forward
+* `POST /backward/<cm>` - Move backward  
+* `POST /left/<degrees>` - Turn left
+* `POST /right/<degrees>` - Turn right
+
+=== Camera & Servo
+* `GET /camera` - Get base64-encoded JPEG image
+* `POST /servo/<degrees>` - Rotate servo
+
+[NOTE]
+====
+Camera returns HTTP 423 if robot is moving. Movement operations are thread-safe and execute one at a time.
+====
+
+== Examples
+
+[source,bash]
+----
+# Move forward 20cm
+curl -X POST http://192.168.1.100:5000/forward/20
+
+# Get camera image
+curl http://192.168.1.100:5000/camera > image.b64
+
+# Check distance
+curl http://192.168.1.100:5000/distance
+----
+
+== Production Deployment
+
+[source,bash]
+----
+sudo cp edgehub.service /etc/systemd/system/
+sudo systemctl enable edgehub.service
+sudo systemctl start edgehub.service
+----
+
+== Troubleshooting
+
+* **Camera issues**: Check `/dev/video0` exists and permissions
+* **Robot not responding**: Verify GoPiGo3 libraries and battery level
+* **Service logs**: `sudo journalctl -u edgehub.service`
