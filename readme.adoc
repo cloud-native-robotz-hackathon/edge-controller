@@ -1,13 +1,11 @@
 = Robot Hackathon Edge Controller
 
-## ARCHIVED VERSION : Check the aktive repos for the current version 
-
 The Edge Controller is a python Server publishing a REST-API to control the robot.
 
 Start it by executing:
 
-    python3 ./server.py
+    python3 ./edgehub.py
 
-The Gopigo will turn on the left eye led to signal the running api. 
+The Gopigo will turn on the left eye led to signal the running api.
 
-The REST-API is accessible unter http://<IP_of_the_gopigo>:5000 
+The REST-API is accessible unter http://<IP_of_the_gopigo>:5000
