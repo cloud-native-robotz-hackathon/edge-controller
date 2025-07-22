@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, send_file, make_response
 import gopigo3
 import easygopigo3 as easy
 import atexit
@@ -140,16 +140,14 @@ def distance():
 def power():
     return str(easygpg.volt())
 
-# --- Camera Endpoint (Updated with State Check) ---
-@app.route('/camera', methods=['GET'])
-def camera():
+def get_camera_jpg():
     global camera_stream
     global is_moving
 
     # First, check if the robot is moving.
     with motion_lock:
         if is_moving:
-            return "Robot is moving, image would be blurry.", 423 # 423 Locked
+            return None, "Robot is moving, image would be blurry.", 423 # 423 Locked
 
     # If not moving, proceed with lazy initialization of the camera.
     if camera_stream is None:
@@ -157,19 +155,40 @@ def camera():
         camera_stream = ThreadedCamera()
         time.sleep(2.0)
         if camera_stream.capture is None:
-            return "Error: Could not open camera.", 500
+            return None, "Error: Could not open camera.", 500
 
     # Read and return the frame as before.
     frame = camera_stream.read()
     if frame is None:
-        return "Error: Could not read frame from camera.", 500
+        return None, "Error: Could not read frame from camera.", 500
 
     ret, buffer = cv2.imencode('.jpg', frame)
     if not ret:
-        return "Error: Could not encode frame.", 500
+        return None, "Error: Could not encode frame.", 500
+
+    return buffer, "OK"
+
+# --- Camera Endpoint (Updated with State Check) ---
+@app.route('/camera', methods=['GET'])
+def camera():
+    
+    buffer, error_msg = get_camera_jpg()
+    if buffer is None:
+        return error_msg, 500
         
     jpg_as_text = base64.b64encode(buffer)
     return jpg_as_text
+
+@app.route('/camera.jpg', methods=['GET'])
+def camera_jpg():
+    
+    buffer, error_msg = get_camera_jpg()
+    if buffer is None:
+        return error_msg, 500
+
+    response = make_response(buffer.tobytes())
+    response.headers.set('Content-Type', 'image/jpeg')
+    return response
 
 # --- Main Execution Block ---
 if __name__ == '__main__':
