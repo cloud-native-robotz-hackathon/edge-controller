@@ -56,7 +56,7 @@ curl http://192.168.1.100:5000/distance
 cd /opt/
 git clone --depth 1 \
     --single-branch \
-    --branch 2.0.0 \
+    --branch v2.0.0 \
     https://github.com/cloud-native-robotz-hackathon/edge-controller.git
 
 cd edge-controller
