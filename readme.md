@@ -27,10 +27,11 @@ The GoPiGo will turn on the left eye LED when the API is running at `http://<rob
 * `POST /backward/<cm>` - Move backward  
 * `POST /left/<degrees>` - Turn left
 * `POST /right/<degrees>` - Turn right
+* `POST /servo/<degrees>` - Rotate servo
 
 ### Camera & Servo
 * `GET /camera` - Get base64-encoded JPEG image
-* `POST /servo/<degrees>` - Rotate servo
+* `GET /camera.jpg` - Get JPEG image
 
 #### NOTE
 Camera returns HTTP 423 if robot is moving. Movement operations are thread-safe and execute one at a time.
