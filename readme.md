@@ -68,4 +68,4 @@ systemctl enable --now edge-controller
 
 * **Camera issues**: Check `/dev/video0` exists and permissions
 * **Robot not responding**: Verify GoPiGo3 libraries and battery level
-* **Service logs**: `sudo journalctl -u edgehub.service`
+* **Service logs**: `sudo journalctl -u edge-controller.service`
