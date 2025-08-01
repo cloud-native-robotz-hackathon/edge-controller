@@ -13,7 +13,7 @@ import logging
 
 __version__ = "2.1.0"
 
-# --- Thread-Safe Camera Class (Unchanged) ---
+# --- Thread-Safe Camera Class ---
 class ThreadedCamera:
     def __init__(self, src='/dev/video0'):
         self.capture = cv2.VideoCapture(src, cv2.CAP_V4L)
@@ -73,7 +73,7 @@ def exit_handler():
 atexit.register(exit_handler)
 
 
-# --- Robot Control Endpoints (Updated with State Lock) ---
+# --- Robot Control Endpoints ---
 @app.route('/', methods=['GET'])
 def index():
     return "Hackathon Robot ready"
@@ -136,8 +136,6 @@ def right(degrees):
 
 @app.route('/servo/<int:degrees>', methods=['POST'])
 def servo_rotate(degrees):
-    # Note: Servo movement is fast, so we might not need to lock it,
-    # but it's good practice for consistency.
     servo.rotate_servo(degrees)
     return "OK"
 
@@ -149,24 +147,45 @@ def distance():
 def power():
     return str(easygpg.volt())
 
-def get_camera_jpg():
+# --- Helper Function ---
+def get_camera_jpg(wait_for_move=False, timeout=15.0):
+    """
+    Captures a frame from the camera.
+    :param wait_for_move: If True, waits for robot movement to finish.
+    :param timeout: Max seconds to wait for movement to stop.
+    :return: A tuple of (buffer, message, status_code).
+    """
     global camera_stream
     global is_moving
 
-    # First, check if the robot is moving.
+    # If instructed, wait for the robot to stop moving.
+    if wait_for_move:
+        start_time = time.time()
+        while True:
+            with motion_lock:
+                if not is_moving:
+                    break # Robot has stopped, exit the waiting loop.
+            
+            if time.time() - start_time > timeout:
+                # If we wait too long, return a timeout error.
+                return None, "Timed out waiting for robot to stop moving.", 408 # 408 Request Timeout
+
+            time.sleep(0.1) # Wait briefly before checking again.
+
+    # If not waiting, check the lock and fail fast
     with motion_lock:
         if is_moving:
             return None, "Robot is moving, image would be blurry.", 423 # 423 Locked
 
-    # If not moving, proceed with lazy initialization of the camera.
+    # Lazy initialization of the camera.
     if camera_stream is None:
         app.logger.info("--- Initializing camera for the first time ---")
         camera_stream = ThreadedCamera()
-        time.sleep(2.0)
+        time.sleep(2.0) # Allow camera to initialize
         if camera_stream.capture is None:
             return None, "Error: Could not open camera.", 500
 
-    # Read and return the frame as before.
+    # Read and encode the frame.
     frame = camera_stream.read()
     if frame is None:
         return None, "Error: Could not read frame from camera.", 500
@@ -175,33 +194,38 @@ def get_camera_jpg():
     if not ret:
         return None, "Error: Could not encode frame.", 500
 
-    return buffer, "OK"
+    return buffer, "OK", 200
 
-# --- Camera Endpoint (Updated with State Check) ---
+# --- Camera Endpoints (Both now wait for movement) ---
 @app.route('/camera', methods=['GET'])
 def camera():
+    # This endpoint will now WAIT for the robot to stop moving.
+    buffer, msg, status = get_camera_jpg(wait_for_move=True)
     
-    buffer, error_msg = get_camera_jpg()
     if buffer is None:
-        return error_msg, 500
-        
+        return msg, status
+            
     jpg_as_text = base64.b64encode(buffer)
-    return jpg_as_text
+    return jpg_as_text, status
 
 @app.route('/camera.jpg', methods=['GET'])
 def camera_jpg():
-    
-    buffer, error_msg = get_camera_jpg()
+    # This endpoint will also WAIT for the robot to stop moving.
+    buffer, msg, status = get_camera_jpg(wait_for_move=True)
+
     if buffer is None:
-        return error_msg, 500
+        return msg, status
 
     response = make_response(buffer.tobytes())
     response.headers.set('Content-Type', 'image/jpeg')
+    response.status_code = status
     return response
 
 # --- Main Execution Block ---
 if __name__ == '__main__':
     app.run(
         host='0.0.0.0',
+        threaded=True, # Important for handling concurrent requests
         debug=(os.environ.get('EDGE_CONTROLLER_DEBUG', 'False') == 'True')
     )
+
