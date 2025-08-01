@@ -11,7 +11,7 @@ import traceback
 import os
 import logging
 
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 
 # --- Thread-Safe Camera Class (Unchanged) ---
 class ThreadedCamera:
