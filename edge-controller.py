@@ -11,7 +11,7 @@ import traceback
 import os
 import logging
 
-__version__ = "2.1.0"
+__version__ = "2.1.1"
 
 # --- Thread-Safe Camera Class ---
 class ThreadedCamera:
@@ -80,7 +80,7 @@ def index():
 
 @app.route('/version', methods=['GET'])
 def version():
-    return __version__
+    return "v" + __version__
 
 @app.route('/forward/<int:length_in_cm>', methods=['POST'])
 def forward(length_in_cm):
