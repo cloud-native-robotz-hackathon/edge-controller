@@ -147,6 +147,28 @@ def distance():
 def power():
     return str(easygpg.volt())
 
+@app.route('/led_on/<color_name>', methods=['GET', 'POST'])
+def led_on(color_name):
+    color_map = {
+        "red":   (255, 0, 0),
+        "green": (0, 255, 0),
+        "blue":  (0, 0, 255)
+    }
+
+    selected_color = color_map.get(color_name.lower())
+
+    if selected_color:
+        easygpg.set_eye_color(selected_color)
+        easygpg.open_eyes()
+        return f"Eyes set to {color_name}!"
+    else:
+        return "Color not found. Try red, green, or blue.", 404
+
+@app.route('/led_off', methods=['POST'])
+def led_off():
+    easygpg.close_eyes()
+    return "OK"
+
 # --- Helper Function ---
 def get_camera_jpg(wait_for_move=False, timeout=15.0):
     """
