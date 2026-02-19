@@ -147,7 +147,7 @@ def distance():
 def power():
     return str(easygpg.volt())
 
-@app.route('/led_on/<color_name>', methods=['GET', 'POST'])
+@app.route('/led_on/<color_name>', methods=['POST'])
 def led_on(color_name):
     color_map = {
         "red":   (255, 0, 0),
